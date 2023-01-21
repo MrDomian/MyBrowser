@@ -8,7 +8,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 class Browser(QWidget):
     def __init__(self):
         super().__init__()
-        icon = QIcon("assets/icon.png")
+        icon = QIcon("assets/my_own_icon.png")
         self.setWindowIcon(icon)
 
         self.setWindowTitle("MyBrowser4Fun")
