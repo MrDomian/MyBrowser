@@ -2,8 +2,8 @@ import pickle
 import sys
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QApplication, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox, \
-    QDialog, QListWidget
+from PyQt5.QtWidgets import QApplication, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, \
+    QDialog, QListWidget, QTabWidget
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 
@@ -12,20 +12,30 @@ class Browser(QWidget):
         super().__init__()
         icon = QIcon("assets/my_own_icon.png")
         self.setWindowIcon(icon)
-
         self.setWindowTitle("MyBrowser4Fun")
         self.setGeometry(50, 50, 1600, 900)
 
         self.webview = QWebEngineView()
         self.webview.load(QUrl("https://www.google.com/"))
 
+        self.tabs = QTabWidget()
+        self.tabs.setTabsClosable(True)
+        self.tabs.tabCloseRequested.connect(self.tabs.removeTab)
+        self.tabs.currentChanged.connect(self.update_address_bar)
+
+        self.new_tab_btn = QPushButton("New Tab")
+        self.new_tab_btn.clicked.connect(self.new_tab)
+
         self.address_bar = QLineEdit()
         self.address_bar.returnPressed.connect(self.browse)
         self.address_bar.textChanged.connect(lambda: self.update_address(QUrl(self.address_bar.text())))
         self.webview.urlChanged.connect(lambda url: self.update_address(url))
+        self.webview.urlChanged.connect(self.save_to_history)
 
         self.browse_btn = QPushButton("Search")
         self.browse_btn.clicked.connect(self.browse)
+
+        self.new_tab()
 
         self.back_btn = QPushButton("<")
         self.back_btn.clicked.connect(self.webview.back)
@@ -54,17 +64,38 @@ class Browser(QWidget):
         address_layout.addWidget(self.address_bar)
         address_layout.addWidget(self.browse_btn)
         address_layout.addWidget(self.history_btn)
+        address_layout.addWidget(self.new_tab_btn)
 
         layout = QVBoxLayout()
         layout.addLayout(address_layout)
-        layout.addWidget(self.webview)
+        layout.addWidget(self.tabs)
 
         self.setLayout(layout)
 
+    def new_tab(self):
+        webview = QWebEngineView()
+        webview.load(QUrl("https://www.google.com/"))
+        webview.urlChanged.connect(lambda url: self.update_address(url))
+        self.tabs.addTab(webview, "New Tab")
+        self.tabs.setCurrentWidget(webview)
+
+    def close_tab(self, index):
+        self.tabs.removeTab(index)
+
+    def update_address_bar(self, index):
+        self.webview = self.tabs.widget(index)
+        self.address_bar.setText(self.webview.url().toString())
+
+    def update_address(self, url):
+        self.webview = self.tabs.currentWidget()
+        self.address_bar.setText(url.toString())
+
     def browse(self):
-        url = QUrl(self.address_bar.text())
-        if not url.toString().startswith("http://") and not url.toString().startswith("https://"):
-            url = QUrl("http://" + self.address_bar.text())
+        query = self.address_bar.text()
+        if "." in query and not query.startswith("http://") and not query.startswith("https://"):
+            url = QUrl("http://" + query)
+        else:
+            url = QUrl("https://www.google.com/search?q=" + query)
         self.webview.load(url)
         self.history.append(url.toString())
 
@@ -80,6 +111,10 @@ class Browser(QWidget):
     def save_history(self):
         with open('history.pkl', 'wb') as f:
             pickle.dump(self.history, f)
+
+    def save_to_history(self, url):
+        if url.toString() not in self.history:
+            self.history.append(url.toString())
 
     def get_history(self):
         return self.history
